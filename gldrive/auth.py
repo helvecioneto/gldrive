@@ -153,34 +153,15 @@ def _run_manual_flow() -> Credentials:
           '("site can\'t be reached")')
     print("— that is expected, and it means it worked. Copy the FULL address")
     print("from the address bar (it contains ?code=...) and paste it here.\n")
-    try:
-        reply = input("Redirect URL (or just the code): ").strip().strip("'\"")
-    except EOFError:
-        reply = ""
-    if not reply:
-        raise AuthError("Aborted: no authorization code provided.")
 
-    if reply.startswith("GOCSPX-") or reply.endswith(".apps.googleusercontent.com"):
-        raise AuthError(
-            "That is the OAuth client secret/ID, not the authorization code. "
-            "Open the URL above in a browser, click Allow, and then paste the "
-            "FULL localhost address from the address bar (it contains ?code=...)."
-        )
-
-    if "accounts.google.com" in reply:
-        raise AuthError(
-            "That is still Google's consent page, not the redirect. Finish "
-            "clicking Allow and wait until the address bar changes to "
-            f"http://localhost:{MANUAL_PORT}/?...code=... (the page will show "
-            "an error - that is fine), then paste that address."
-        )
-
-    if "code=" in reply:
-        code = parse_qs(urlparse(reply).query).get("code", [None])[0]
-        if code is None:
-            raise AuthError("Could not find the ?code= parameter in the pasted URL.")
-    else:
-        code = reply
+    while True:
+        try:
+            code = _extract_code(_read_reply())
+            break
+        except AuthError as exc:
+            if "Aborted" in str(exc):
+                raise
+            print(f"  {exc}\n")
 
     try:
         flow.fetch_token(code=code)
@@ -190,8 +171,47 @@ def _run_manual_flow() -> Credentials:
             hint = ("\nThe saved OAuth client no longer exists in Google Cloud "
                     "Console. Create a new one (type: Desktop app), then run "
                     "'gldrive logout --all' and 'gldrive login' again.")
+        elif "invalid_grant" in str(exc):
+            hint = ("\nAuthorization codes are single-use and expire in minutes. "
+                    "Run 'gldrive login' again and paste the fresh URL right away.")
         raise AuthError(f"Token exchange failed: {exc}{hint}")
     return flow.credentials
+
+
+def _read_reply() -> str:
+    try:
+        reply = input("Redirect URL (or just the code): ").strip().strip("'\"")
+    except EOFError:
+        reply = ""
+    if not reply:
+        raise AuthError("Aborted: no authorization code provided.")
+    return reply
+
+
+def _extract_code(reply: str) -> str:
+    """Pull the authorization code out of a pasted redirect URL (or bare code)."""
+    parsed = urlparse(reply)
+    code = parse_qs(parsed.query).get("code", [None])[0]
+
+    if code is None:
+        if reply.startswith("GOCSPX-") or reply.endswith(".apps.googleusercontent.com"):
+            raise AuthError(
+                "That is the OAuth client secret/ID, not the authorization code. "
+                "Open the URL above in a browser, click Allow, and then paste the "
+                "FULL localhost address from the address bar (it contains ?code=...)."
+            )
+        if parsed.netloc.endswith("google.com"):
+            raise AuthError(
+                "That is still Google's consent page, not the redirect. Finish "
+                "clicking Allow and wait until the address bar changes to "
+                f"http://localhost:{MANUAL_PORT}/?...code=... (the page will show "
+                "an error - that is fine), then paste that address."
+            )
+        if parsed.scheme or "?" in reply:
+            raise AuthError("Could not find the ?code= parameter in the pasted URL.")
+        code = reply  # a bare authorization code
+
+    return code
 
 
 def login(secrets: str = None, open_browser: bool = True) -> Credentials:
