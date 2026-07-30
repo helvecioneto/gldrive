@@ -51,10 +51,17 @@ def build_client_config(client_id: str, client_secret: str) -> dict:
 
 def save_client_secrets_data(data: dict) -> Path:
     """Validate and store OAuth client secrets (parsed JSON) in the config dir."""
-    if "installed" not in data and "web" not in data:
+    if "web" in data and "installed" not in data:
+        raise AuthError(
+            "This OAuth client is of type 'Web application', which requires "
+            "pre-registered redirect URIs and will fail with "
+            "redirect_uri_mismatch. Create a new client of type 'Desktop app' "
+            "at https://console.cloud.google.com/apis/credentials and use that one."
+        )
+    if "installed" not in data:
         raise AuthError(
             "This does not look like an OAuth client secrets file "
-            "(missing 'installed'/'web' key). Download it from "
+            "(missing 'installed' key). Download it from "
             "https://console.cloud.google.com/apis/credentials"
         )
     dest = secrets_path()
