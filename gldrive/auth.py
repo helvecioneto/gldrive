@@ -145,6 +145,13 @@ def _run_manual_flow() -> Credentials:
     if not reply:
         raise AuthError("Aborted: no authorization code provided.")
 
+    if reply.startswith("GOCSPX-") or reply.endswith(".apps.googleusercontent.com"):
+        raise AuthError(
+            "That is the OAuth client secret/ID, not the authorization code. "
+            "Open the URL above in a browser, click Allow, and then paste the "
+            "FULL localhost address from the address bar (it contains ?code=...)."
+        )
+
     if "code=" in reply:
         code = parse_qs(urlparse(reply).query).get("code", [None])[0]
         if code is None:
@@ -155,7 +162,12 @@ def _run_manual_flow() -> Credentials:
     try:
         flow.fetch_token(code=code)
     except Exception as exc:
-        raise AuthError(f"Token exchange failed: {exc}")
+        hint = ""
+        if "deleted_client" in str(exc) or "invalid_client" in str(exc):
+            hint = ("\nThe saved OAuth client no longer exists in Google Cloud "
+                    "Console. Create a new one (type: Desktop app), then run "
+                    "'gldrive logout --all' and 'gldrive login' again.")
+        raise AuthError(f"Token exchange failed: {exc}{hint}")
     return flow.credentials
 
 
