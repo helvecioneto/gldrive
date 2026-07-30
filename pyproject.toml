@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gldrive"
+version = "0.1.0"
+description = "scp-like upload, download and sync for Google Drive"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Helvecio Neto" }]
+dependencies = [
+    "google-api-python-client>=2.100",
+    "google-auth>=2.20",
+    "google-auth-oauthlib>=1.0",
+    "click>=8.1",
+    "tqdm>=4.65",
+    "watchdog>=3.0",
+]
+
+[project.scripts]
+gldrive = "gldrive.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["gldrive*"]

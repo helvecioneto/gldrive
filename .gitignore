@@ -1,0 +1,27 @@
+# Credentials — never commit
+*credentials*.json
+client_secret*.json
+token.json
+syncs.json
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtualenvs
+.venv/
+venv/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Claude
+CLAUDE.md
+CLAUDE.local.md
+.claude/
