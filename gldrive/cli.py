@@ -104,12 +104,18 @@ def _prompt_for_secrets():
               help="OAuth client secrets JSON from Google Cloud Console "
                    "(only needed on the first login).")
 @click.option("--no-browser", is_flag=True,
-              help="Print the auth URL instead of opening a browser.")
+              help="Headless/SSH mode: print the auth URL to open on any "
+                   "machine, then paste the redirect URL back.")
 def login(secrets, no_browser):
     """Log in to Google Drive via OAuth (opens your browser).
 
     Without --secrets on the first login, prints the link to create the
     OAuth client and waits for you to provide the downloaded credentials.
+
+    On machines without a browser (clusters, SSH sessions), use
+    --no-browser: open the printed URL on any computer, authorize, and
+    paste the resulting redirect URL back into the terminal. If no
+    browser is found, this mode is used automatically.
     """
     try:
         if secrets:

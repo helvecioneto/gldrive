@@ -7,12 +7,14 @@ Credentials live in a per-user config directory (override with GLDRIVE_CONFIG_DI
 
 import json
 import os
+import webbrowser
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
@@ -107,13 +109,54 @@ def get_credentials(interactive: bool = False, open_browser: bool = True) -> Cre
             "Create one (type: Desktop app) at https://console.cloud.google.com/apis/credentials"
         )
 
-    flow = InstalledAppFlow.from_client_secrets_file(str(secrets_path()), SCOPES)
     if open_browser:
-        creds = flow.run_local_server(port=0, prompt="consent")
+        flow = InstalledAppFlow.from_client_secrets_file(str(secrets_path()), SCOPES)
+        try:
+            creds = flow.run_local_server(port=0, prompt="consent")
+        except webbrowser.Error:
+            print("\nNo local browser found — switching to manual login.")
+            creds = _run_manual_flow()
     else:
-        creds = flow.run_local_server(port=0, prompt="consent", open_browser=False)
+        creds = _run_manual_flow()
     _save_token(creds)
     return creds
+
+
+def _run_manual_flow() -> Credentials:
+    """Headless login: user opens the URL anywhere, pastes the redirect back.
+
+    Works on remote/SSH machines: the OAuth redirect goes to a localhost
+    address that fails to load in the user's browser, but the authorization
+    code is right there in the address bar for them to copy.
+    """
+    flow = Flow.from_client_secrets_file(
+        str(secrets_path()), scopes=SCOPES, redirect_uri="http://localhost:1/"
+    )
+    auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
+    print("\nOpen this URL in any browser (on your own computer is fine):\n")
+    print(auth_url)
+    print("\nAfter you authorize, the browser will fail to load a page at")
+    print("localhost — that is expected. Copy the FULL address from the")
+    print("browser's address bar and paste it here.\n")
+    try:
+        reply = input("Redirect URL (or just the code): ").strip().strip("'\"")
+    except EOFError:
+        reply = ""
+    if not reply:
+        raise AuthError("Aborted: no authorization code provided.")
+
+    if "code=" in reply:
+        code = parse_qs(urlparse(reply).query).get("code", [None])[0]
+        if code is None:
+            raise AuthError("Could not find the ?code= parameter in the pasted URL.")
+    else:
+        code = reply
+
+    try:
+        flow.fetch_token(code=code)
+    except Exception as exc:
+        raise AuthError(f"Token exchange failed: {exc}")
+    return flow.credentials
 
 
 def login(secrets: str = None, open_browser: bool = True) -> Credentials:

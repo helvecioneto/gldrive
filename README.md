@@ -72,8 +72,14 @@ gldrive login --secrets ~/Downloads/client_secret_XXXX.json
 
 The browser then opens, you authorize with a few clicks and that's it. The
 token is stored in `~/.config/gldrive/` and refreshed automatically — the
-next commands never ask for login. On servers without a browser, use
-`gldrive login --no-browser`.
+next commands never ask for login.
+
+On machines without a browser (clusters, SSH sessions), use
+`gldrive login --no-browser`: it prints a URL you can open on **any**
+computer; after authorizing, the browser lands on a localhost page that fails
+to load — that's expected — and you just paste the full address from the
+address bar back into the terminal. If no browser is found, this mode kicks
+in automatically.
 
 ## Usage
 
