@@ -32,6 +32,21 @@ cd gldrive
 pip install -e .
 ```
 
+### On shared machines / conda environments
+
+On clusters or machines with a shared Anaconda, avoid `pip install --user`:
+mixing new Google libraries with older ones already present (oauth2client,
+pyOpenSSL, pydrive2...) can break imports. Install into a dedicated
+environment and expose just the executable:
+
+```bash
+python3 -m venv ~/.gldrive-venv
+~/.gldrive-venv/bin/pip install git+https://github.com/helvecioneto/gldrive.git
+ln -s ~/.gldrive-venv/bin/gldrive ~/.local/bin/gldrive
+```
+
+(or use [pipx](https://pipx.pypa.io): `pipx install git+https://github.com/helvecioneto/gldrive.git`)
+
 ## First-time setup (once)
 
 Just run:
