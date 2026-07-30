@@ -74,12 +74,21 @@ The browser then opens, you authorize with a few clicks and that's it. The
 token is stored in `~/.config/gldrive/` and refreshed automatically — the
 next commands never ask for login.
 
-On machines without a browser (clusters, SSH sessions), use
-`gldrive login --no-browser`: it prints a URL you can open on **any**
-computer; after authorizing, the browser lands on a localhost page that fails
-to load — that's expected — and you just paste the full address from the
-address bar back into the terminal. If no browser is found, this mode kicks
-in automatically.
+### Machines without a browser (clusters, SSH)
+
+`gldrive login --no-browser` prints a URL you can open on **any** computer.
+After you click Allow, the browser lands on a `http://localhost:53682/...`
+page that fails to load ("site can't be reached") — that is expected and
+means it worked. Copy the **full address from the address bar** (it contains
+`?code=...`) and paste it back into the terminal. If no browser is found on
+the machine, this mode kicks in automatically.
+
+Simpler alternative: log in on your own computer and copy the token over —
+it is self-contained and refreshes itself:
+
+```bash
+scp ~/.config/gldrive/token.json user@cluster:~/.config/gldrive/token.json
+```
 
 ## Usage
 

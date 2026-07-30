@@ -18,6 +18,11 @@ from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
+# Redirect port for the manual (headless) flow. Must be outside the port range
+# browsers refuse to connect to (port 1 and other low ports are blocked as
+# "unsafe", which leaves the address bar stuck on the consent page).
+MANUAL_PORT = 53682
+
 
 class AuthError(Exception):
     """Raised when authentication cannot be completed."""
@@ -137,14 +142,17 @@ def _run_manual_flow() -> Credentials:
     code is right there in the address bar for them to copy.
     """
     flow = Flow.from_client_secrets_file(
-        str(secrets_path()), scopes=SCOPES, redirect_uri="http://localhost:1/"
+        str(secrets_path()), scopes=SCOPES,
+        redirect_uri=f"http://localhost:{MANUAL_PORT}/",
     )
     auth_url, _ = flow.authorization_url(access_type="offline", prompt="consent")
     print("\nOpen this URL in any browser (on your own computer is fine):\n")
     print(auth_url)
-    print("\nAfter you authorize, the browser will fail to load a page at")
-    print("localhost — that is expected. Copy the FULL address from the")
-    print("browser's address bar and paste it here.\n")
+    print("\nAuthorize the access. The browser will then land on a")
+    print(f"http://localhost:{MANUAL_PORT}/... page that fails to load "
+          '("site can\'t be reached")')
+    print("— that is expected, and it means it worked. Copy the FULL address")
+    print("from the address bar (it contains ?code=...) and paste it here.\n")
     try:
         reply = input("Redirect URL (or just the code): ").strip().strip("'\"")
     except EOFError:
@@ -157,6 +165,14 @@ def _run_manual_flow() -> Credentials:
             "That is the OAuth client secret/ID, not the authorization code. "
             "Open the URL above in a browser, click Allow, and then paste the "
             "FULL localhost address from the address bar (it contains ?code=...)."
+        )
+
+    if "accounts.google.com" in reply:
+        raise AuthError(
+            "That is still Google's consent page, not the redirect. Finish "
+            "clicking Allow and wait until the address bar changes to "
+            f"http://localhost:{MANUAL_PORT}/?...code=... (the page will show "
+            "an error - that is fine), then paste that address."
         )
 
     if "code=" in reply:
